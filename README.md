@@ -1,0 +1,77 @@
+# Mago Assistant example skill: VIES VAT check
+
+A complete, working Mago Assistant skill in one class. It validates an EU VAT number against
+[VIES](https://ec.europa.eu/taxation_customs/vies/), the European Commission's register, which needs
+no API key.
+
+## What it does
+
+Ask the assistant, in the admin chat panel:
+
+- *Is btw-nummer NL810433941B01 geldig?*
+- *Check the VAT number on order 000000563*
+
+It answers whether the number is registered, and — if the member state shares them — the registered
+company name and address.
+
+## Install
+
+```bash
+composer require mago-assistant/magento2-vies:*
+bin/magento module:enable MagoAssistant_Vies
+bin/magento setup:upgrade
+bin/magento cache:flush
+```
+
+## The whole skill is two files
+
+### `etc/di.xml` — the registration
+
+```xml
+<type name="MagoAssistant\Mago\Service\Tool\ToolRegistry">
+    <arguments>
+        <argument name="tools" xsi:type="array">
+            <item name="vies_vat_check" xsi:type="object">MagoAssistant\Vies\Service\Tool\VatCheck</item>
+        </argument>
+    </arguments>
+</type>
+```
+
+That is all of it. Nothing inside `MagoAssistant_Mago` is edited, and the item name is the name the
+model sees and calls.
+
+### `Service/Tool/VatCheck.php` — the tool
+
+One class implementing `MagoAssistant\Mago\Api\Tool\ToolInterface`. Eight methods:
+
+| Method | What it is for |
+| --- | --- |
+| `getName()` | The name the model calls. Matches the `di.xml` item name. |
+| `getDescription()` | How the model decides to pick this tool over another one. |
+| `getParameterSchema()` | JSON Schema for the arguments. |
+| `getMagentoAcl()` | The admin resource the caller must hold. |
+| `isReadOnly()` / `isReadOnlyAction()` | Whether a call can change anything. `false` means the admin is asked to confirm first. |
+| `getFieldClassification()` | How each returned field may cross to the model. |
+| `getInstructions()` | Presentation guidance, delivered *after* the first call. |
+| `execute()` | The work. |
+
+## The four things that are easy to get wrong
+
+**1. Undeclared fields are dropped, silently.** `getFieldClassification()` is a whitelist, not a
+hint. A field `execute()` returns that is not listed here never reaches the model, and you will see
+the assistant answer as if the data were not there. When a skill "loses" data, check this list
+first.
+
+**2. Personal data is masked, not removed.** `name` and `address` are declared `TOKENISE`, so the
+model receives `mago://name_1` and the administrator sees the real value in the panel. For a
+registered company that name is public record, but for a sole trader it is a person's name and home
+address — so it is masked either way. Use `PiiClass::PUBLIC` only for data that is genuinely not
+personal.
+
+**3. The model fills in every parameter you offer.** If you put a parameter in the schema, expect it
+to arrive whether or not the question called for one. Removing a parameter is a far stronger lever
+than writing a description asking the model not to use it.
+
+**4. `getInstructions()` arrives after the first call, not before.** So it is the place to say how to
+present an answer, never which arguments to pass. Anything about calling belongs in
+`getDescription()` and the parameter schema, which the model reads first.

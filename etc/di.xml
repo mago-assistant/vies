@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+    <!--
+        This is the whole registration: append the tool to the assistant's registry under a name of
+        your own. Nothing in MagoAssistant_Mago needs editing, and the name here is what the model
+        sees and calls.
+    -->
+    <type name="MagoAssistant\Mago\Service\Tool\ToolRegistry">
+        <arguments>
+            <argument name="tools" xsi:type="array">
+                <item name="vies_vat_check" xsi:type="object">MagoAssistant\Vies\Service\Tool\VatCheck</item>
+            </argument>
+        </arguments>
+    </type>
+</config>
